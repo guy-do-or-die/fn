@@ -18,6 +18,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium.webdriver.common.by import By
 
+from selenium.common.exceptions import NoAlertPresentException
+
 from python_anticaptcha import AnticaptchaClient, NoCaptchaTaskProxylessTask
 
 from stem.control import Controller
@@ -81,6 +83,8 @@ def setup_driver(proxy=False, detached=False, driver=None):
         chrome_options = Options()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--mute-audio')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-logging')
 
         prefs = {'profile.managed_default_content_settings.images': 2}
         chrome_options.add_experimental_option('prefs', prefs)
@@ -165,10 +169,9 @@ def alarm(driver, message, guy=None):
 
 def check_for_alert(driver):
     try:
-        alert = None
-        alert = driver.switch_to.alert.ignore()
-    except:
-        alert and log(alert.text)
+        driver.switch_to_alert().dismiss()
+    except NoAlertPresentException:
+        pass
 
 
 def switch_tab(driver):
@@ -205,7 +208,7 @@ def reg(start, end=None):
                 reg_btn = wait(driver, EC.presence_of_element_located(
                     (By.CLASS_NAME, 'register-link')))
 
-                if not reg_btn.is_displayed():
+                if not (reg_btn and reg_btn.is_displayed()):
                     driver.find_element_by_css_selector('.navbar-toggle').click()
                     reg_btn = wait(driver, EC.visibility_of_element_located(
                         (By.CLASS_NAME, 'register-link')))
@@ -232,7 +235,7 @@ def reg(start, end=None):
 
                         if driver.find_elements_by_css_selector('.register-wrapper .error'):
                             error = driver.find_element_by_css_selector('.register-wrapper .error')
-                            if error.is_displayed() and error.text:
+                            if error and error.is_displayed() and error.text:
                                 break
 
                         log('registered', guy=guy)
@@ -242,7 +245,7 @@ def reg(start, end=None):
                 check_for_alert(driver)
                 log(e, guy=guy, type='error')
             finally:
-                driver.close()
+                driver and driver.close()
 
 
 def login(driver, guy):
@@ -264,7 +267,7 @@ def login(driver, guy):
             driver.find_element_by_css_selector('button.main-button.login').click()
             switch_tab(driver)
 
-            if error.is_displayed() and error.text or captcha_requested(driver):
+            if error and error.is_displayed() and error.text or captcha_requested(driver):
                 if 'invalid' in error.text:
                     return
             else:
@@ -306,7 +309,7 @@ def surf(params):
                     roll_btn = wait(driver, EC.presence_of_element_located(
                         (By.CSS_SELECTOR, '.roll-wrapper button')))
 
-                    if roll_btn.is_displayed():
+                    if roll_btn and roll_btn.is_displayed():
                         roll_btn.click()
                         switch_tab(driver)
 

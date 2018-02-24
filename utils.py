@@ -1,4 +1,5 @@
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import NoAlertPresentException
 
 import config
 
@@ -15,6 +16,10 @@ class element_has_attribute(object):
 
 def wait(driver, *args, **kwargs):
     try:
-        return WebDriverWait(driver, config.LOAD_TIMEOUT).until(*args, **kwargs)
+        timeout = config.PROXY_LOAD_TIMEOUT if driver.proxy else config.LOAD_TIMEOUT
+        return WebDriverWait(driver, timeout).until(*args, **kwargs)
     except:
-        driver.switch_to.alert.accept()
+        try:
+            driver.switch_to.alert.accept()
+        except NoAlertPresentException:
+            pass
