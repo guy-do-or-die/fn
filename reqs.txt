@@ -1,0 +1,8 @@
+ipdb
+stem
+names
+selenium
+apiclient
+mongoengine
+python_anticaptcha
+google-api-python-client
