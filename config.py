@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 
 SLEEP_ON_ERROR = 15
 

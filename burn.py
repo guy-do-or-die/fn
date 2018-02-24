@@ -13,7 +13,6 @@ from selenium import webdriver
 from selenium.webdriver import DesiredCapabilities, ActionChains
 
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.remote.remote_connection import LOGGER
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium.webdriver.common.by import By
@@ -25,7 +24,7 @@ from python_anticaptcha import AnticaptchaClient, NoCaptchaTaskProxylessTask
 from stem.control import Controller
 from stem import Signal
 
-from utils import wait, element_has_attribute
+from utils import *
 
 import config
 
@@ -34,38 +33,6 @@ SPECIAL_GUYS = cycle(config.GUYS)
 
 anticpatcha_client = AnticaptchaClient(config.API_KEY)
 solved_captchas = 0
-
-
-def now():
-    return datetime.now().strftime('%Y.%m.%d %H:%M:%S')
-
-
-def send_message(message):
-    subprocess.Popen(['notify-send', message])
-    return
-
-
-logging.basicConfig(filename='logs/{}.log'.format(now()),
-                    format=config.LOG_FORMAT,
-                    level=logging.DEBUG)
-
-logger = logging.getLogger(__name__)
-
-if config.DEBUG:
-    LOGGER.setLevel(logging.WARNING)
-
-
-def log(message, **kwargs):
-    guy = kwargs.get('guy', '')
-    type = kwargs.get('type', 'info')
-
-    print('{}: {} {}'.format(now(), message, guy))
-    getattr(logger, type)(message, extra=kwargs)
-
-    if config.DEBUG and type == 'error':
-        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
-        driver = kwargs.get('driver')
-        #config.DEBUG and ipdb.set_trace()
 
 
 def surf_url(guy):
@@ -108,6 +75,8 @@ def setup_driver(proxy=False, detached=False, driver=None):
         driver.set_window_size(500, 500)
         driver.set_page_load_timeout(max_wait)
         driver.set_script_timeout(max_wait)
+
+        setattr(driver, 'proxy', proxy)
     except Exception as e:
         log(e, type="error")
 
@@ -160,11 +129,6 @@ def solve_captcha(driver):
     except Exception as e:
         check_for_alert(driver)
         log(e, type='error')
-
-
-def alarm(driver, message, guy=None):
-    send_message('{} {}'.format(message, guy))
-    driver.execute_script('alert("HERE I AM! {}")'.format(guy))
 
 
 def check_for_alert(driver):
@@ -286,6 +250,7 @@ def logout(driver):
         switch_tab(driver)
     except:
         check_for_alert(driver)
+
 
 def number(value):
     return int(''.join(s for s in value if s.isdigit()).lstrip('0') or '0')
