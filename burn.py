@@ -33,6 +33,7 @@ SPECIAL_GUYS = cycle(config.GUYS)
 
 anticpatcha_client = AnticaptchaClient(config.API_KEY)
 solved_captchas = 0
+errors_count = 0
 
 
 def surf_url(guy):
@@ -48,7 +49,7 @@ def reconn():
 def setup_driver(proxy=False, detached=False, driver=None):
     try:
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
+        #chrome_options.add_argument('--headless')
         chrome_options.add_argument('--mute-audio')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-logging')
@@ -213,6 +214,8 @@ def reg(start, end=None):
 
 
 def login(driver, guy):
+    global errors_count
+
     shots = 5
     while shots:
         log('{}: trying to login for {}'.format(shots, guy))
@@ -240,6 +243,7 @@ def login(driver, guy):
                 return True
 
         except Exception as e:
+            errors_count += 1
             check_for_alert(driver)
             log(e, guy=guy, type='error')
 
@@ -262,10 +266,14 @@ def surf(params):
 
     driver = setup_driver()
 
+    global errors_count
     for n in cycle(range(start, end)):
-        guy = make_a_guy(n)
-        if login(driver, guy):
+        if errors_count > 50:
+            sys.exit(0)
 
+        guy = make_a_guy(n)
+
+        if login(driver, guy):
             shots = 3
             while shots:
                 shots -= 1
@@ -286,6 +294,7 @@ def surf(params):
                         result = wait(driver, EC.visibility_of_element_located(
                             (By.CSS_SELECTOR, '.result')))
 
+                        errors_count -= 2 if errors_count else 0
                         log('lucky number {} brings {} to {}'.format(
                             num, result.text[-10:], guy))
 
@@ -295,8 +304,10 @@ def surf(params):
                         break
 
                 except Exception as e:
+                    errors_count += 1
                     check_for_alert(driver)
                     log(e, guy=guy, type='error')
+                    log('errors count: {}'.format(errors_count), guy=guy)
                     driver.refresh()
 
             logout(driver)
