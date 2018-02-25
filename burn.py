@@ -49,7 +49,7 @@ def reconn():
 def setup_driver(proxy=False, detached=False, driver=None):
     try:
         chrome_options = Options()
-        #chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless')
         chrome_options.add_argument('--mute-audio')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-logging')
@@ -196,12 +196,13 @@ def reg(start, end=None):
 
                 if captcha_requested(driver):
                     if solve_captcha(driver):
-                        time.sleep(5)
+                        time.sleep(10)
 
                         if driver.find_elements_by_css_selector('.register-wrapper .error'):
                             error = driver.find_element_by_css_selector('.register-wrapper .error')
                             if error and error.is_displayed() and error.text:
-                                break
+                                log(error.text, guy=guy)
+                                continue
 
                         log('registered', guy=guy)
                         break
@@ -235,6 +236,8 @@ def login(driver, guy):
             switch_tab(driver)
 
             if error and error.is_displayed() and error.text or captcha_requested(driver):
+                log(error.text, guy=guy)
+
                 if 'invalid' in error.text:
                     return
             else:

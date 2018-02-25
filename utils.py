@@ -18,9 +18,7 @@ logging.basicConfig(filename='logs/{}.log'.format(now()),
 
 logger = logging.getLogger(__name__)
 
-
-if config.DEBUG:
-    LOGGER.setLevel(logging.WARNING)
+LOGGER.setLevel(logging.WARNING if config.DEBUG else logging.ERROR)
 
 
 def log(message, **kwargs):
