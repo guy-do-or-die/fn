@@ -252,6 +252,7 @@ def login(driver, guy):
             errors_count += 1
             check_for_alert(driver)
             log(e, guy=guy, type='error')
+            log('errors count: {}'.format(errors_count), guy=guy)
 
 
 def logout(driver):
