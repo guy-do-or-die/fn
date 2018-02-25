@@ -202,6 +202,9 @@ def reg(start, end=None):
                             error = driver.find_element_by_css_selector('.register-wrapper .error')
                             if error and error.is_displayed() and error.text:
                                 log(error.text, guy=guy)
+                                if 'taken' in error.text:
+                                    break
+
                                 continue
 
                         log('registered', guy=guy)
@@ -271,7 +274,7 @@ def surf(params):
 
     global errors_count
     for n in cycle(range(start, end)):
-        if errors_count > 50:
+        if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 
         guy = make_a_guy(n)
@@ -297,7 +300,7 @@ def surf(params):
                         result = wait(driver, EC.visibility_of_element_located(
                             (By.CSS_SELECTOR, '.result')))
 
-                        errors_count -= 2 if errors_count else 0
+                        errors_count = 0
                         log('lucky number {} brings {} to {}'.format(
                             num, result.text[-10:], guy))
 

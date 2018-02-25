@@ -1,9 +1,9 @@
 DEBUG = False
 
-SLEEP_ON_ERROR = 15
-
 LOAD_TIMEOUT = 30
 PROXY_LOAD_TIMEOUT = 180
+
+ERRORS_MAX_COUNT = 10
 
 LOG_FORMAT = '%(asctime)-15s %(message)s'
 
