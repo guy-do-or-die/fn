@@ -24,7 +24,7 @@ from python_anticaptcha import AnticaptchaClient, NoCaptchaTaskProxylessTask
 from stem.control import Controller
 from stem import Signal
 
-from utils import *
+from utils import log as base_log, wait, pers
 
 import config
 
@@ -34,6 +34,21 @@ SPECIAL_GUYS = cycle(config.GUYS)
 anticpatcha_client = AnticaptchaClient(config.API_KEY)
 solved_captchas = 0
 errors_count = 0
+n = 0
+
+
+def log(*args, **kwargs):
+    global errors_count
+
+    base_log(*args, **kwargs)
+
+    if kwargs.get('type') == 'error':
+        if errors_count == 0:
+            pers('{}_surf'.format(0), n)
+
+        errors_count += 1
+
+        log('errors count: {}'.format(errors_count))
 
 
 def surf_url(guy):
@@ -79,7 +94,7 @@ def setup_driver(proxy=False, detached=False, driver=None):
 
         setattr(driver, 'proxy', proxy)
     except Exception as e:
-        log(e, type="error")
+        log(e, type='error')
 
     if not detached:
         def handler(*args, **kwargs):
@@ -137,6 +152,8 @@ def check_for_alert(driver):
         driver.switch_to_alert().dismiss()
     except NoAlertPresentException:
         pass
+    except Exception as e:
+        log(e, type='error')
 
 
 def switch_tab(driver):
@@ -156,110 +173,156 @@ def make_a_guy(n):
     return config.LEAD.format(n)
 
 
-def reg(start, end=None):
-    for n in range(start, end or start + 1):
-        guy = make_a_guy(n)
-        log('registering', guy=guy)
+def guys(proc, cmd, start, end):
+    try:
+        gload = list(range(start, end))
 
-        shots = 5
-        while shots:
-            shots -= 1
+        key = '{}_{}'.format(proc, cmd)
+        val = pers(key)
 
-            try:
-                driver = None; reconn()
-                driver = setup_driver(proxy=True)
-                driver.get(config.REG_URL)
+        if val:
+            offset = int(val) + len(config.GUYS)
+            gload = list(gload[offset:] + gload[:offset])
 
-                reg_btn = wait(driver, EC.presence_of_element_located(
-                    (By.CLASS_NAME, 'register-link')))
-
-                if not (reg_btn and reg_btn.is_displayed()):
-                    driver.find_element_by_css_selector('.navbar-toggle').click()
-                    reg_btn = wait(driver, EC.visibility_of_element_located(
-                        (By.CLASS_NAME, 'register-link')))
-
-                reg_btn.click()
-                time.sleep(5)
-
-                email = driver.find_element_by_css_selector('.register-wrapper .email')
-                password = driver.find_element_by_css_selector('.register-wrapper .password')
-                repassword = driver.find_element_by_css_selector('.register-wrapper .confirm-password')
-
-                email.send_keys(guy)
-                password.send_keys(config.PASSWORD)
-                repassword.send_keys(config.PASSWORD)
-
-                reg_btn = driver.find_element_by_css_selector('.register-wrapper button.register')
-                ActionChains(driver).move_to_element(reg_btn).click().perform()
-
-                switch_tab(driver)
-
-                if captcha_requested(driver):
-                    if solve_captcha(driver):
-                        time.sleep(10)
-
-                        if driver.find_elements_by_css_selector('.register-wrapper .error'):
-                            error = driver.find_element_by_css_selector('.register-wrapper .error')
-                            if error and error.is_displayed() and error.text:
-                                log(error.text, guy=guy)
-                                if 'taken' in error.text:
-                                    break
-
-                                continue
-
-                        log('registered', guy=guy)
-                        break
-
-            except Exception as e:
-                check_for_alert(driver)
-                log(e, guy=guy, type='error')
-            finally:
-                driver and driver.close()
+        return cycle(gload)
+    except Exception as e:
+        log(e, type='error')
+    finally:
+        pers('-' + key)
 
 
 def login(driver, guy):
-    global errors_count
-
     shots = 5
     while shots:
-        log('{}: trying to login for {}'.format(shots, guy))
+        log('trying to login ({} shots left) for {}'.format(shots, guy))
         shots -= 1
 
         try:
             driver.get(config.LOGIN_URL)
 
+            if driver.current_url == config.URL:
+                logout(driver)
+
             email = driver.find_element_by_css_selector('.login-wrapper .email')
             password = driver.find_element_by_css_selector('.login-wrapper .password')
-            error = driver.find_element_by_css_selector('.login-wrapper .error')
 
             email.send_keys(guy)
             password.send_keys(config.PASSWORD)
 
             driver.find_element_by_css_selector('button.main-button.login').click()
             switch_tab(driver)
+            time.sleep(2)
 
-            if error and error.is_displayed() and error.text or captcha_requested(driver):
-                log(error.text, guy=guy)
-
-                if 'invalid' in error.text:
-                    return
-            else:
-                wait(driver, EC.url_changes(config.URL))
+            if driver.current_url == config.URL:
                 log('logged in with {}'.format(guy))
                 return True
 
+            if captcha_requested(driver):
+                continue
+
+            if driver.find_elements_by_css_selector('.login-wrapper .error'):
+                error = driver.find_element_by_css_selector('.login-wrapper .error')
+
+                if error.is_displayed() and error.text:
+                    log(error.text, guy=guy)
+
+                    if 'invalid' in error.text:
+                        return
+
         except Exception as e:
-            errors_count += 1
             check_for_alert(driver)
+
             log(e, guy=guy, type='error')
-            log('errors count: {}'.format(errors_count), guy=guy)
+
+
+def reg(start, end=None):
+    global errors_count
+    global n
+
+    not_registered = []
+    login_driver = setup_driver()
+
+    for n in guys(0, 'reg', start, end or start + 1):
+        if errors_count > config.ERRORS_MAX_COUNT:
+            sys.exit(0)
+
+        guy = make_a_guy(n)
+
+        if login(login_driver, guy):
+            log('already registered', guy=guy)
+            logout(login_driver)
+            continue
+        else:
+            registered = False
+            log('registering', guy=guy)
+            shots = 5
+            while shots:
+                shots -= 1
+
+                try:
+                    driver = None; reconn()
+                    driver = setup_driver(proxy=True)
+
+                    driver.get(config.REG_URL)
+                    reg_btn = wait(driver, EC.presence_of_element_located(
+                        (By.CLASS_NAME, 'register-link')))
+
+                    if not (reg_btn and reg_btn.is_displayed()):
+                        driver.find_element_by_css_selector('.navbar-toggle').click()
+                        reg_btn = wait(driver, EC.visibility_of_element_located(
+                            (By.CLASS_NAME, 'register-link')))
+
+                    reg_btn.click()
+                    time.sleep(5)
+
+                    email = driver.find_element_by_css_selector('.register-wrapper .email')
+                    password = driver.find_element_by_css_selector('.register-wrapper .password')
+                    repassword = driver.find_element_by_css_selector('.register-wrapper .confirm-password')
+
+                    email.send_keys(guy)
+                    password.send_keys(config.PASSWORD)
+                    repassword.send_keys(config.PASSWORD)
+
+                    reg_btn = driver.find_element_by_css_selector('.register-wrapper button.register')
+                    ActionChains(driver).move_to_element(reg_btn).click().perform()
+
+                    switch_tab(driver)
+
+                    if captcha_requested(driver):
+                        if solve_captcha(driver):
+                            time.sleep(5)  # maybe check url instead of waiting???
+
+                            if driver.find_elements_by_css_selector('.register-wrapper .error'):
+                                error = driver.find_element_by_css_selector('.register-wrapper .error')
+                                if error and error.is_displayed() and error.text:
+                                    log(error.text, guy=guy)
+                                    if 'taken' in error.text:
+                                        break
+
+                                    continue
+
+                            log('registered', guy=guy)
+
+                            registered = True
+                            errors_count = 0
+                            break
+
+                except Exception as e:
+                    check_for_alert(driver)
+                    log(e, guy=guy, type='error')
+                finally:
+                    not registered and not_registered.append(n)
+                    driver and driver.close()
+
+    log('not registered: {}'.format(not_registered))
 
 
 def logout(driver):
     try:
         driver.get(config.LOGOUT_URL)
         switch_tab(driver)
-    except:
+    except Exception as e:
+        log(e, type='error')
         check_for_alert(driver)
 
 
@@ -268,13 +331,15 @@ def number(value):
 
 
 def surf(params):
+    global errors_count
+    global n
+
     n, start, end = map(int, params.split(':'))
     time.sleep(7 * n)
 
     driver = setup_driver()
 
-    global errors_count
-    for n in cycle(range(start, end)):
+    for n in guys(0, 'surf', start, end):
         if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 
@@ -311,7 +376,6 @@ def surf(params):
                         break
 
                 except Exception as e:
-                    errors_count += 1
                     check_for_alert(driver)
                     log(e, guy=guy, type='error')
                     log('errors count: {}'.format(errors_count), guy=guy)

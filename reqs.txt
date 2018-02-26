@@ -2,6 +2,7 @@ ipdb
 stem
 names
 selenium
+simplekv
 apiclient
 mongoengine
 python_anticaptcha

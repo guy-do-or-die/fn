@@ -16,7 +16,7 @@ if __name__ == '__main__':
             _, cmd, start, end, *rest = (sys.argv + 10 * [''])[:10]
 
             if cmd == 'reg':
-                reg(int(start), int(end))
+                reg(int(start), int(end or 0))
             elif cmd == 'surf':
                 surf('0:-6:201')
         else:

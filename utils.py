@@ -2,10 +2,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoAlertPresentException
 from selenium.webdriver.remote.remote_connection import LOGGER
 
+from simplekv.fs import FilesystemStore
+
 import subprocess
 import datetime
 import logging
 import config
+import json
+import sys
 
 
 def now():
@@ -28,8 +32,15 @@ def log(message, **kwargs):
     print('{}: {} {}'.format(now(), message, guy))
     getattr(logger, type)(message, extra=kwargs)
 
-    if config.DEBUG and type == 'error':
+    if type == 'error':
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
+
+
+try:
+    store = FilesystemStore('./data')
+except Exception as e:
+    log(e, type='error')
+    store = None
 
 
 def send_message(message):
@@ -62,3 +73,17 @@ def wait(driver, *args, **kwargs):
 def alarm(driver, message, guy=None):
     send_message('{} {}'.format(message, guy))
     driver.execute_script('alert("HERE I AM! {}")'.format(guy))
+
+
+def pers(key, val=None):
+    if store:
+        if key.startswith('-'):
+            store.delete(key[1:])
+        else:
+            if val:
+                store.put(key, bytes(json.dumps(val), 'utf-8'))
+            else:
+                try:
+                    return json.loads(store.get(key).decode('utf-8'))
+                except KeyError:
+                    pass
