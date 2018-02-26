@@ -18,9 +18,9 @@ if __name__ == '__main__':
             if cmd == 'reg':
                 reg(int(start), int(end or 0))
             elif cmd == 'surf':
-                surf('0:-6:201')
+                surf('0:{}:{}'.format(int(start), int(end or o)))
         else:
-            surf('0:-6:201')
+            surf('0:-6:301')
 
         #guys = []
         #pool = multiprocessing.Pool(len(guys))

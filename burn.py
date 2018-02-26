@@ -34,17 +34,18 @@ SPECIAL_GUYS = cycle(config.GUYS)
 anticpatcha_client = AnticaptchaClient(config.API_KEY)
 solved_captchas = 0
 errors_count = 0
+cmd = 'surf'
 n = 0
 
 
 def log(*args, **kwargs):
-    global errors_count
+    global errors_count, cmd, n
 
     base_log(*args, **kwargs)
 
     if kwargs.get('type') == 'error':
         if errors_count == 0:
-            pers('{}_surf'.format(0), n)
+            pers('{}_{}'.format(0, cmd), n)
 
         errors_count += 1
 
@@ -175,16 +176,16 @@ def make_a_guy(n):
 
 def guys(proc, cmd, start, end):
     try:
-        gload = list(range(start, end))
-
         key = '{}_{}'.format(proc, cmd)
         val = pers(key)
 
-        if val:
-            offset = int(val) + len(config.GUYS)
-            gload = list(gload[offset:] + gload[:offset])
+        offset = int(val) + len(config.GUYS) if val else 0
 
-        return cycle(gload)
+        gload = list(range(start, end))
+        gload = list(gload[offset:] + gload[:offset])
+
+        return cycle(gload) if cmd == 'surf' else gload
+
     except Exception as e:
         log(e, type='error')
     finally:
@@ -236,13 +237,14 @@ def login(driver, guy):
 
 
 def reg(start, end=None):
-    global errors_count
-    global n
+    global errors_count, cmd, n
 
-    not_registered = []
+    cmd = 'reg'
+
+    not_registered = set()
     login_driver = setup_driver()
 
-    for n in guys(0, 'reg', start, end or start + 1):
+    for n in guys(0, cmd, start, end or start + 1):
         if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 
@@ -311,7 +313,12 @@ def reg(start, end=None):
                     check_for_alert(driver)
                     log(e, guy=guy, type='error')
                 finally:
-                    not registered and not_registered.append(n)
+                    if registered:
+                        not_registered.discard(n)
+                    else:
+                        not_registered.add(n)
+
+                    pers('not_registered', list(not_registered))
                     driver and driver.close()
 
     log('not registered: {}'.format(not_registered))
@@ -331,15 +338,16 @@ def number(value):
 
 
 def surf(params):
-    global errors_count
-    global n
+    global errors_count, cmd, n
+
+    cmd = 'cmd'
 
     n, start, end = map(int, params.split(':'))
     time.sleep(7 * n)
 
     driver = setup_driver()
 
-    for n in guys(0, 'surf', start, end):
+    for n in guys(0, cmd, start, end):
         if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 
