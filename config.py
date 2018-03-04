@@ -1,13 +1,14 @@
 DEBUG = False
 
-LOAD_TIMEOUT = 30
+LOAD_TIMEOUT = 60
 PROXY_LOAD_TIMEOUT = 180
 
 ERRORS_MAX_COUNT = 10
 
 LOG_FORMAT = '%(asctime)-15s %(message)s'
 
-THREADS_NUM = 2
+PROCS_NUM = 2
+GUYS_PER_PROC = 250
 
 DB = {
     'name': 'booster',

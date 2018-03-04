@@ -35,6 +35,7 @@ anticpatcha_client = AnticaptchaClient(config.API_KEY)
 solved_captchas = 0
 errors_count = 0
 cmd = 'surf'
+proc = 0
 n = 0
 
 
@@ -45,7 +46,7 @@ def log(*args, **kwargs):
 
     if kwargs.get('type') == 'error':
         if errors_count == 0:
-            pers('{}_{}'.format(0, cmd), n)
+            pers('{}_{}'.format(proc, cmd), n)
 
         errors_count += 1
 
@@ -321,7 +322,7 @@ def reg(start, end=None):
                     pers('not_registered', list(not_registered))
                     driver and driver.close()
 
-    log('not registered: {}'.format(not_registered))
+    not_registered and log('not registered: {}'.format(not_registered))
 
 
 def logout(driver):
@@ -338,16 +339,16 @@ def number(value):
 
 
 def surf(params):
-    global errors_count, cmd, n
+    global errors_count, cmd, n, proc
 
-    cmd = 'cmd'
+    cmd = 'surf'
 
-    n, start, end = map(int, params.split(':'))
+    proc, start, end = map(int, params.split(':'))
     time.sleep(7 * n)
 
     driver = setup_driver()
 
-    for n in guys(0, cmd, start, end):
+    for n in guys(proc, cmd, start, end):
         if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 

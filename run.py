@@ -7,6 +7,8 @@ import sys
 
 from burn import surf, reg, log
 
+import config
+
 
 if __name__ == '__main__':
     try:
@@ -20,14 +22,18 @@ if __name__ == '__main__':
             elif cmd == 'surf':
                 surf('0:{}:{}'.format(int(start), int(end or o)))
         else:
-            surf('0:-6:301')
+            proc_num = config.PROCS_NUM
+            offset = config.GUYS_PER_PROC
 
-        #guys = []
-        #pool = multiprocessing.Pool(len(guys))
-        #pool.map_async(surf, guys)
+            params = ['{}:{}:{}'.format(
+                proc, -6 if proc == 0 else offset * proc,
+                offset * (proc + 1)) for proc in range(proc_num)]
 
-        #pool.close()
-        #pool.join()
+            pool = multiprocessing.Pool()
+            pool.map_async(surf, params)
+
+            pool.close()
+            pool.join()
     except (socket.error,
             KeyboardInterrupt,
             http.client.RemoteDisconnected) as e:
