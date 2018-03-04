@@ -125,8 +125,6 @@ def captcha_requested(driver):
 def solve_captcha(driver):
     try:
         log('solving recaptcha')
-        # driver.switch_to.frame(driver.find_element_by_css_selector('iframe[title*="recaptcha"]'))
-        # rc = driver.find_elements_by_css_selector('#rc-imageselect')
 
         site_key = re.search(r"sitekey: '(.*?)'", driver.page_source).group(1)
         task = NoCaptchaTaskProxylessTask( website_url=driver.current_url, website_key=site_key)
@@ -151,7 +149,7 @@ def solve_captcha(driver):
 
 def check_for_alert(driver):
     try:
-        driver.switch_to_alert().dismiss()
+        driver and driver.switch_to_alert().dismiss()
     except NoAlertPresentException:
         pass
     except Exception as e:
