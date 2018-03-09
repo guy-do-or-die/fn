@@ -30,7 +30,7 @@ def log(message, **kwargs):
     type = kwargs.get('type', 'info')
 
     print('{}: {} {}'.format(now(), message, guy))
-    getattr(logger, type)(message, extra=kwargs)
+    getattr(logger, type)('{} proc={}'.format(message, kwargs.get('proc', 0)), extra=kwargs)
 
     if type == 'error':
         print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
@@ -76,6 +76,8 @@ def alarm(driver, message, guy=None):
 
 
 def pers(key, val=None):
+    log('persisiting {}:{}'.format(key, val))
+
     if store:
         if key.startswith('-'):
             store.delete(key[1:])

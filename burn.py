@@ -40,7 +40,8 @@ n = 0
 
 
 def log(*args, **kwargs):
-    global errors_count, cmd, n
+    global errors_count, cmd, n, proc
+    kwargs['proc'] = proc
 
     base_log(*args, **kwargs)
 
@@ -90,7 +91,7 @@ def setup_driver(proxy=False, detached=False, driver=None):
                                   desired_capabilities=dc)
 
         max_wait = config.PROXY_LOAD_TIMEOUT if proxy else config.LOAD_TIMEOUT
-        driver.set_window_size(500, 500)
+        driver.set_window_size(1000, 1000)
         driver.set_page_load_timeout(max_wait)
         driver.set_script_timeout(max_wait)
 
@@ -178,7 +179,12 @@ def guys(proc, cmd, start, end):
         key = '{}_{}'.format(proc, cmd)
         val = pers(key)
 
-        offset = int(val) + len(config.GUYS) if val else 0
+        offset = int(val or '0')
+
+        if proc > 0:
+            offset -= start
+        else:
+            offset += len(config.GUYS) if val else 0
 
         gload = list(range(start, end))
         gload = list(gload[offset:] + gload[:offset])
@@ -214,17 +220,29 @@ def login(driver, guy):
             time.sleep(2)
 
             if driver.current_url == config.URL:
-                log('logged in with {}'.format(guy))
+                balance = driver.find_element_by_class_name('navbar-coins').text
+
+                log('logged in with {}, balance: {}'.format(guy, number(balance, True)))
+
+                if driver.find_elements_by_class_name('timeout-container'):
+                    min, sec = divmod(number(driver.find_element_by_class_name('timeout-container').text), 100)
+                    log('countdown: {0:02d}:{0:02d}'.format(min, sec))
+
+                    if 0 < min < 10:
+                        log('waiting for the time...')
+                        time.sleep(60 * min + sec)
+
                 return True
 
             if captcha_requested(driver):
+                log('captcha :(')
                 continue
 
             if driver.find_elements_by_css_selector('.login-wrapper .error'):
                 error = driver.find_element_by_css_selector('.login-wrapper .error')
 
                 if error.is_displayed() and error.text:
-                    log(error.text, guy=guy)
+                    log('{} {}'.format(error.text, guy))
 
                     if 'invalid' in error.text:
                         return
@@ -243,7 +261,7 @@ def reg(start, end=None):
     not_registered = set()
     login_driver = setup_driver()
 
-    for n in guys(0, cmd, start, end or start + 1):
+    for n in pers('not_registered') or guys(0, cmd, start, end or start + 1):
         if errors_count > config.ERRORS_MAX_COUNT:
             sys.exit(0)
 
@@ -261,7 +279,7 @@ def reg(start, end=None):
                 shots -= 1
 
                 try:
-                    driver = None; reconn()
+                    driver = None; # reconn()
                     driver = setup_driver(proxy=True)
 
                     driver.get(config.REG_URL)
@@ -320,7 +338,7 @@ def reg(start, end=None):
                     pers('not_registered', list(not_registered))
                     driver and driver.close()
 
-    not_registered and log('not registered: {}'.format(not_registered))
+    not_registered and log('not registered: {}'.format(list(not_registered)))
 
 
 def logout(driver):
@@ -332,8 +350,13 @@ def logout(driver):
         check_for_alert(driver)
 
 
-def number(value):
-    return int(''.join(s for s in value if s.isdigit()).lstrip('0') or '0')
+def number(value, float_=False):
+    text = ''.join(s for s in value if s.isdigit() or s == '.').lstrip('0') or '0'
+
+    if float_:
+        return float(text)
+
+    return int(text)
 
 
 def surf(params):
@@ -369,7 +392,9 @@ def surf(params):
                             driver.refresh()
                             continue
 
-                        num = number(driver.find_element_by_class_name('lucky-numbers').text)
+                        num_text = driver.find_element_by_class_name('lucky-numbers').text
+                        num = number(num_text)
+
                         result = wait(driver, EC.visibility_of_element_located(
                             (By.CSS_SELECTOR, '.result')))
 
@@ -377,8 +402,8 @@ def surf(params):
                         log('lucky number {} brings {} to {}'.format(
                             num, result.text[-10:], guy))
 
-                        if 9985 < num < 10001:
-                            log('!!!!!!!!!!!!!!! {}'.format(num, guy))
+                        if 9985 < num < 10001 and num_text[0] in ('0', '1'):
+                            log('BINGO! {}'.format(num, guy))
 
                         break
 

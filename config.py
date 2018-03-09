@@ -3,7 +3,7 @@ DEBUG = False
 LOAD_TIMEOUT = 60
 PROXY_LOAD_TIMEOUT = 180
 
-ERRORS_MAX_COUNT = 10
+ERRORS_MAX_COUNT = 2
 
 LOG_FORMAT = '%(asctime)-15s %(message)s'
 

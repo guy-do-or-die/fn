@@ -17,10 +17,12 @@ if __name__ == '__main__':
         if len(sys.argv) > 1:
             _, cmd, start, end, *rest = (sys.argv + 10 * [''])[:10]
 
+            proc = (rest or [0])[0]
+
             if cmd == 'reg':
                 reg(int(start), int(end or 0))
             elif cmd == 'surf':
-                surf('0:{}:{}'.format(int(start), int(end or o)))
+                surf('{}:{}:{}'.format(proc, int(start), int(end or 0)))
         else:
             proc_num = config.PROCS_NUM
             offset = config.GUYS_PER_PROC
