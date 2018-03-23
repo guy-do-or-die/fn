@@ -198,7 +198,7 @@ def guys(proc, cmd, start, end):
 
 
 def login(driver, guy):
-    shots = 5
+    shots = 3
     while shots:
         log('trying to login ({} shots left) for {}'.format(shots, guy))
         shots -= 1
@@ -206,29 +206,41 @@ def login(driver, guy):
         try:
             driver.get(config.LOGIN_URL)
 
-            if driver.current_url == config.URL:
-                logout(driver)
+            session = pers(guy, raw=True)
 
-            email = driver.find_element_by_css_selector('.login-wrapper .email')
-            password = driver.find_element_by_css_selector('.login-wrapper .password')
+            if session:
+                log('restoring session for {}'.format(guy))
+                c = driver.get_cookie('coinmaster_session')
+                driver.delete_cookie('coinmaster_session')
+                c['value'] = session
+                driver.add_cookie(c)
+                driver.refresh()
+            else:
+                if driver.current_url == config.URL:
+                    logout(driver)
 
-            email.send_keys(guy)
-            password.send_keys(config.PASSWORD)
+                email = driver.find_element_by_css_selector('.login-wrapper .email')
+                password = driver.find_element_by_css_selector('.login-wrapper .password')
 
-            driver.find_element_by_css_selector('button.main-button.login').click()
-            switch_tab(driver)
-            time.sleep(2)
+                email.send_keys(guy)
+                password.send_keys(config.PASSWORD)
+
+                driver.find_element_by_css_selector('button.main-button.login').click()
+                switch_tab(driver)
+                time.sleep(2)
 
             if driver.current_url == config.URL:
                 balance = driver.find_element_by_class_name('navbar-coins').text
 
                 log('logged in with {}, balance: {}'.format(guy, number(balance, True)))
 
+                pers(guy, driver.get_cookie('coinmaster_session')['value'])
+
                 if driver.find_elements_by_class_name('timeout-container'):
                     min, sec = divmod(number(driver.find_element_by_class_name('timeout-container').text), 100)
                     log('countdown: {0:02d}:{0:02d}'.format(min, sec))
 
-                    if 0 < min < 10:
+                    if 0 < min < 10 and cmd == 'surf':
                         log('waiting for the time...')
                         time.sleep(60 * min + sec)
 
@@ -237,6 +249,10 @@ def login(driver, guy):
             if captcha_requested(driver):
                 log('captcha :(')
                 continue
+
+            if session:
+                log('session for {} is no longer valid'.format(guy))
+                pers('-' + guy)
 
             if driver.find_elements_by_css_selector('.login-wrapper .error'):
                 error = driver.find_element_by_css_selector('.login-wrapper .error')
@@ -342,12 +358,15 @@ def reg(start, end=None):
 
 
 def logout(driver):
+    driver.delete_all_cookies()
+    '''
     try:
         driver.get(config.LOGOUT_URL)
         switch_tab(driver)
     except Exception as e:
         log(e, type='error')
         check_for_alert(driver)
+    '''
 
 
 def number(value, float_=False):

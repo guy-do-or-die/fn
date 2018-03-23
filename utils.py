@@ -75,7 +75,7 @@ def alarm(driver, message, guy=None):
     driver.execute_script('alert("HERE I AM! {}")'.format(guy))
 
 
-def pers(key, val=None):
+def pers(key, val=None, raw=False):
     log('persisiting {}:{}'.format(key, val))
 
     if store:
@@ -83,9 +83,10 @@ def pers(key, val=None):
             store.delete(key[1:])
         else:
             if val:
-                store.put(key, bytes(json.dumps(val), 'utf-8'))
+                store.put(key, bytes(val if raw else json.dumps(val), 'utf-8'))
             else:
                 try:
-                    return json.loads(store.get(key).decode('utf-8'))
+                    data = store.get(key).decode('utf-8')
+                    return data if raw else json.loads(data)
                 except KeyError:
                     pass
