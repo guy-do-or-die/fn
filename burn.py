@@ -135,7 +135,20 @@ def solve_captcha(driver):
 
         token = job.get_solution_response()
 
-        driver.execute_script('sendRegister(arguments[0])', token)
+        try:
+            driver.execute_script(config.ROLL_SCRIPT, token)
+        except:
+            pass
+
+        try:
+            driver.execute_script('sendLogin(arguments[0])', token)
+        except:
+            pass
+
+        try:
+            driver.execute_script('sendRegister(arguments[0])', token)
+        except:
+            pass
 
         global solved_captchas
         solved_captchas += 1
@@ -231,14 +244,18 @@ def login(driver, guy):
 
             if driver.current_url == config.URL:
                 balance = driver.find_element_by_class_name('navbar-coins').text
-
                 log('logged in with {}, balance: {}'.format(guy, number(balance, True)))
 
                 pers(guy, driver.get_cookie('coinmaster_session')['value'])
 
                 if driver.find_elements_by_class_name('timeout-container'):
-                    min, sec = divmod(number(driver.find_element_by_class_name('timeout-container').text), 100)
-                    log('countdown: {0:02d}:{0:02d}'.format(min, sec))
+                    timeout = driver.find_element_by_class_name('timeout-container').text
+
+                    min, sec = divmod(number(timeout),
+                                      100 if len(timeout) > 2 and
+                                      not timeout.startswith('0') else 10)
+
+                    log('countdown: {0:02d}:{1:02d}'.format(min, sec))
 
                     if 0 < min < 10 and cmd == 'surf':
                         log('waiting for the time...')
@@ -359,6 +376,7 @@ def reg(start, end=None):
 
 def logout(driver):
     driver.delete_all_cookies()
+    driver.refresh()
     '''
     try:
         driver.get(config.LOGOUT_URL)
@@ -408,8 +426,9 @@ def surf(params):
                         switch_tab(driver)
 
                         if captcha_requested(driver):
-                            driver.refresh()
-                            continue
+                            solve_captcha(driver)
+                            #driver.refresh()
+                            #continue
 
                         num_text = driver.find_element_by_class_name('lucky-numbers').text
                         num = number(num_text)

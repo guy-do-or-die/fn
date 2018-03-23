@@ -35,3 +35,5 @@ LOGIN_URL = secrets.LOGIN_URL
 LOGOUT_URL = secrets.LOGOUT_URL
 
 PASSWORD = getattr(secrets, 'PASSWORD')
+
+ROLL_SCRIPT = secrets.ROLL_SCRIPT
